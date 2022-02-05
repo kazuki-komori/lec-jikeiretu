@@ -1,0 +1,97 @@
+---
+title: "時系列解析 第3回課題"
+author: "小森 一輝"
+date: "2022/1/10"
+output: html_document
+---
+
+```{r}
+load("/cloud/project/report-3/TSA21_HW3.RData")
+library(forecast)
+```
+
+## (1)
+```{r}
+IPSA_TS <- ts(TSA_20_HW2$IIPSA, start = c(2013, 4), frequency = 12)
+print("自己相関関数")
+res.acf <- acf(IPSA_TS, type = "correlation", demean = T)
+print("偏自己相関関数")
+pacf(IPSA_TS)
+```
+
+## (2)
+```{r}
+Box.test(IPSA_TS, lag = 6, type = "Box-Pierce")
+```
+
+## (3)
+```{r}
+create_ma <- function() {
+  aics <- matrix(0, 10, 2)
+  for(i in 1:10) {
+    res <- arima(IPSA_TS, order = c(0, 0, i), method = c("ML"))
+    aics[i, 1] <- i
+    aics[i, 2] <- res$aic
+  }
+  colnames(aics) <- c("MA の次数", "AIC")
+  return(aics)
+}
+```
+
+
+```{r}
+(res.ar <- ar(IPSA_TS, aic = T)) # => 2
+res.ma <- create_ma() # => 8
+plot(res.ma, type = "b", col="royalblue3", pch = 15)
+title("MA の次数による AIC の値")
+```
+
+AR, MA それぞれのモデルについて AIC の値を算出した結果, AR モデルの次数は2, MA モデルの次数は 8 が適していると判断できた。
+そこで ARMA(2, 8) と表現できる。
+
+
+## (4)
+```{r}
+judge_arima <- function() {
+  rm <- matrix(0, 15, 3)
+  colnames(rm) <- c("AR_MA", "AIC", "BIC")
+  ps = c(0, 1, 2, 3)
+  qs = c(0, 1, 2, 3)
+  i = 0
+  for (p in ps) {
+    for (q in qs) {
+      if((p != 0) || (q != 0)) {
+        i = i + 1
+        res <- Arima(IPSA_TS, order = c(p, 0, q))
+        rm[i, 1] <- paste(p, "-", q)
+        rm[i, 2] <- res$aic
+        rm[i, 3] <- res$bic
+      }
+    }
+  }
+  return(as.data.frame(rm))
+}
+res.arima <- judge_arima()
+print(res.arima)
+
+# plot
+plot(1:15, res.arima$AIC, xaxt = "n", xlab = "AR-MA", ylab = "AIC", type = "b", col="royalblue3", pch = 15, ylim = c(250, 310), las=1)
+axis(side = 1, at = 1:15, labels = res.arima$AR_MA)
+par(new = T)
+plot(1:15, res.arima$BIC, xaxt = "n", ann = F, type = "b", col="green3", pch = 15, ylim = c(250, 310), las=1)
+legend("topleft", legend = c("BIC", "AIC"), lty = 1, col = c("green3", "royalblue3"))
+title("AR と MA モデル における AIC BIC のプロット")
+```
+
+## (5)
+(4) の結果より, ARMA(1, 4) が適していると考えられる。
+
+## (6)
+```{r}
+mode.arma <- Arima(IPSA_TS, order = c(1, 0, 4))
+(res.fore <- forecast(mode.arma, h = 6))
+autoplot(res.fore)
+```
+
+上記の結果より, 縮小すると予測される。
+

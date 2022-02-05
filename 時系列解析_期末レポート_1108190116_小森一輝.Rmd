@@ -1,0 +1,72 @@
+---
+title: "時系列解析 期末レポート"
+author: "1108190116 小森 一輝"
+date: "2022/2/5"
+output: html_document
+---
+
+## Q3 
+```{r}
+library(vars)
+data("Canada")
+```
+
+### (1) VAR(2)モデルの推定
+```{r}
+(model.canada_var2 <- VAR(Canada[, 3:4], p=2, type = c("const")))
+```
+
+
+### (2) Granger 因果性の検定
+```{r}
+causality(model.canada_var2, cause = "rw")
+causality(model.canada_var2, cause = "U")
+```
+
+### (3) Granger 因果の解釈
+
+(2)の結果より, 実質賃金から失業率は因果がないが, 失業率から実質賃金は因果がないとは言えないことが分かる。
+
+
+## Q3
+```{r}
+library(urca)
+data("finland")
+data.finland <- finland[colnames(finland) != "difp"]
+data.finland <- ts(data.finland, frequency = 4, start = c(1958, 2))
+head(data.finland)
+```
+
+### (1) 3変数に対してする単位根検定
+```{r}
+res.ur.lrm1 <- ur.df(data.finland[, 1], type = c("drift"), lags = 4)
+summary(res.ur.lrm1)
+
+res.ur.lny <- ur.df(data.finland[, 2], type = c("drift"), lags = 4)
+summary(res.ur.lny)
+
+res.ur.lnmr <- ur.df(data.finland[, 3], type = c("drift"), lags = 4)
+summary(res.ur.lnmr)
+```
+
+**解釈**
+
+lrm1 は10%点で帰無仮説を棄却せず, 単位根過程でないとは言えない。
+lny は10%点で帰無仮説を棄却せず, 単位根過程でないとは言えない。
+lnmr は1%点で帰無仮説が棄却されるから, 単位根過程であるとは言えない。
+
+
+### (2) 共和分検定 (最大固有値検定)
+```{r}
+res.ca.jo <- ca.jo(data.finland, season = 4, ecdet = "none", K = 4, type = "eigen")
+summary(res.ca.jo)
+```
+H0: j <= 0 vs H1: j = 1 の場合においてのみ 5%点で帰無仮説棄却しているから, 共和分ベクトルの数は 1 である。
+
+### (3) 共和分検定 (トレース検定)
+```{r}
+res.ca.jo2 <- ca.jo(data.finland, season = 4, ecdet = "none", K = 4, type = "trace")
+summary(res.ca.jo2)
+```
+
+H0: j <= 0 vs H1: j = 1 の場合においてのみ 5%点で帰無仮説棄却しているから, 共和分ベクトルの数は 1 である。
